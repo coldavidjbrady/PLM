@@ -9,7 +9,7 @@ import urllib
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from xml.etree.ElementTree import Element, tostring
-from msilib.schema import ComboBox
+#from msilib.schema import ComboBox
 
 class PlmGui(Frame):
     def __init__(self, master):
