@@ -16,16 +16,42 @@ class PlmGui(Frame):
         Frame.__init__(self, master)
         self.master = master
         self.text = None
-        self.user = StringVar()
-        self.pwd = StringVar()
+        self.sessionUser = StringVar()
+        self.sessionPwd = StringVar()
         self.dmsID = StringVar()
         self.sku = StringVar()
         self.flag = IntVar()
+        self.sessionCookie = self.getAuthCredentials()
         self.options = []
         self.attrDict = {}
         self.itemDict = {}
         self.getOptions()
         self.initUserInterface()
+            
+    @property
+    def user(self):
+        return self.sessionUser.get()
+    
+    @user.setter
+    def user(self, uname):
+        self.sessionUser.set(uname)
+        
+    @property
+    def pwd(self):
+        return self.sessionPwd.get()
+    
+    @pwd.setter
+    def pwd(self, passWord):
+        self.sessionPwd.set(passWord)
+        
+    @property
+    def cookie(self):
+        if self.sessionCookie != None:
+            return self.sessionCookie
+    
+    @cookie.setter
+    def cookie(self):
+        self.sessionCookie = self.getAuthCredentials()
         
     def dict2Xml(self, tag, d):
         elem = Element(tag)
@@ -41,8 +67,8 @@ class PlmGui(Frame):
        
     def displayItemXml(self):
         self.clearText()
-        cookie = self.getAuthCredentials()
-        item = self.getItem(cookie, "json", self.dmsID.get())
+        #cookie = self.getAuthCredentials()
+        item = self.getItem(self.cookie, "json", self.dmsID.get())
         buf = StringIO()
         jsonObject = json.loads(item)
         self.getItemAttributes(jsonObject, 0, False)
@@ -56,23 +82,22 @@ class PlmGui(Frame):
     
     def getOptions(self):
         ''' Returns a list of all SKUs that will be populated in a drop down box. '''
-        #self.clearText()
-        cookie = self.getAuthCredentials()
-        self.getAllItems(cookie, "json")
+        #cookie = self.getAuthCredentials()
+        self.getAllItems(self.cookie, "json")
         self.options = sorted([item for item in self.itemDict.keys()])
         self.sku.set(self.options[0])
         
     def displayAllItems(self):
         self.clearText()
-        cookie = self.getAuthCredentials()
-        self.getAllItems(cookie, "json")
+        #cookie = self.getAuthCredentials()
+        self.getAllItems(self.cookie, "json")
         buf = StringIO()
         self.text.insert(1.0, self.getItemString(self.itemDict, 0, buf, False))
         
     def displayItem(self):
         self.clearText()
-        cookie = self.getAuthCredentials()
-        item = self.getItem(cookie, "json", self.dmsID.get())
+        #cookie = self.getAuthCredentials()
+        item = self.getItem(self.cookie, "json", self.dmsID.get())
         buf = StringIO()
         jsonObject = json.loads(item)
         if self.flag.get():
@@ -93,15 +118,15 @@ class PlmGui(Frame):
         self.plmlbl = Label(self.frameone, text = "  PLM-360 Item Master Viewer  ", background = "white", foreground = "blue", font = "Times 20", relief = "raised")
         self.plmlbl.grid(row = 0, column = 0, columnspan = 5)
         self.userlbl = Label(self.frameone, font = "Times 12", text = "User ID").grid(row = 1, column = 0, sticky = "w", padx = 0, pady = 20, ipadx = 0, ipady = 0)
-        self.userentry = Entry(self.frameone, width = 30, textvariable = self.user).grid(row = 1, column = 0, sticky = "w",  padx = 80, pady = 0, ipadx = 0, ipady = 0)
+        self.userentry = Entry(self.frameone, width = 30, textvariable = self.sessionUser).grid(row = 1, column = 0, sticky = "w",  padx = 80, pady = 0, ipadx = 0, ipady = 0)
         self.passlbl = Label(self.frameone, font = "Times 12", text = "Password").grid(row = 1, column = 1, sticky = "w", padx = 0, pady = 0, ipadx = 0, ipady = 0)
-        self.passentry = Entry(self.frameone, show = "*", textvariable = self.pwd).grid(row = 1, column = 1, sticky = "w",  padx = 85, pady = 0, ipadx = 0, ipady = 0)
+        self.passentry = Entry(self.frameone, show = "*", textvariable = self.sessionPwd).grid(row = 1, column = 1, sticky = "w",  padx = 85, pady = 0, ipadx = 0, ipady = 0)
         self.blanklbl = Label(self.frameone, text = "").grid(row = 3)
         #self.dmsIdlbl = Label(self.frameone, font = "Times 12", text = "DMS ID").grid(row = 2, column = 0, sticky = "w", padx = 0, pady = 0, ipadx = 0, ipady = 0)
         #self.dmsIdentry = Entry(self.frameone, textvariable = self.dmsID).grid(row = 2, column = 0, sticky = "w",  padx = 80, pady = 0, ipadx = 0, ipady = 0)
         self.skuOptionMenu = OptionMenu(self.frameone, self.sku, *self.options).grid(row = 2, column = 0, sticky = "w")
         self.flagcb = Checkbutton(self.frameone, font = "Times 12", text = "Display JSON Object", variable = self.flag).grid(row = 2, column = 0, padx = 120)
-        self.queryPLMbutton = Button(self.frameone, background = "blue", foreground = "white", font = "Times 12", relief = "raised", text = "Get Data", command = self.displayItem).grid(row = 2, column = 1, sticky = "e")
+        self.queryPLMbutton = Button(self.frameone, background = "blue", foreground = "white", font = "Times 12", relief = "raised", text = "Get Data", command = self.displayItem).grid(row = 2, column = 1, sticky = "w")
         
         self.frametwo = Frame(self.master)
         self.frametwo.grid(row = 1, column = 0)
@@ -123,12 +148,12 @@ class PlmGui(Frame):
         self.quitbutton.grid(row = 2, column = 1, sticky = "w", padx = 20, pady = 20)
  
     def getAuthCredentials(self):
-        if (self.user.get() == "" or self.pwd.get()== ""):
-            self.user.set("david.brady@g3enterprises.com")
-            self.pwd.set("Kimber1y")
-            
+        if (self.user == "" or self.pwd == ""):
+            self.user = "david.brady@g3enterprises.com"
+            self.pwd = "Kimber1y"
+        
         authUrl="https://g3enterprises.autodeskplm360.net/rest/auth/1/login"
-        headers = {"Content-Type" : "application/json", "Accept": "application/json", "userID" : self.user.get(), "password" : self.pwd.get()}
+        headers = {"Content-Type" : "application/json", "Accept": "application/json", "userID" : self.user, "password" : self.pwd}
         data = urlencode(headers).encode("utf-8")
         req = Request(authUrl, data)
         response = urlopen(req)
