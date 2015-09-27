@@ -9,25 +9,31 @@ import urllib
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from xml.etree.ElementTree import Element, tostring
+import threading
+import time
+
 
 
 class PlmGui(Frame):
     def __init__(self, master):
         Frame.__init__(self, master)
         self.master = master
+        self.timeout = True
         self.text = None
         self.sessionUser = StringVar()
         self.sessionPwd = StringVar()
         self.dmsID = StringVar()
         self.sku = StringVar()
         self.flag = IntVar()
-        self.sessionCookie = self.getAuthCredentials()
+        self.sessionCookie = None
+        self.cookie = True # Set sessionCookie using the setter @property
         self.options = []
         self.attrDict = {}
         self.itemDict = {}
         self.getOptions()
         self.initUserInterface()
             
+    # Getter and Setter methods follow for user, password, and cookie. 
     @property
     def user(self):
         return self.sessionUser.get()
@@ -46,12 +52,12 @@ class PlmGui(Frame):
         
     @property
     def cookie(self):
-        if self.sessionCookie != None:
-            return self.sessionCookie
+        return self.sessionCookie
     
     @cookie.setter
-    def cookie(self):
-        self.sessionCookie = self.getAuthCredentials()
+    def cookie(self, needCookie):
+        if needCookie:
+            self.sessionCookie = self.getAuthCredentials()
         
     def dict2Xml(self, tag, d):
         elem = Element(tag)
@@ -67,7 +73,6 @@ class PlmGui(Frame):
        
     def displayItemXml(self):
         self.clearText()
-        #cookie = self.getAuthCredentials()
         item = self.getItem(self.cookie, "json", self.dmsID.get())
         buf = StringIO()
         jsonObject = json.loads(item)
@@ -82,21 +87,19 @@ class PlmGui(Frame):
     
     def getOptions(self):
         ''' Returns a list of all SKUs that will be populated in a drop down box. '''
-        #cookie = self.getAuthCredentials()
         self.getAllItems(self.cookie, "json")
         self.options = sorted([item for item in self.itemDict.keys()])
         self.sku.set(self.options[0])
         
     def displayAllItems(self):
         self.clearText()
-        #cookie = self.getAuthCredentials()
         self.getAllItems(self.cookie, "json")
         buf = StringIO()
         self.text.insert(1.0, self.getItemString(self.itemDict, 0, buf, False))
         
+    
     def displayItem(self):
         self.clearText()
-        #cookie = self.getAuthCredentials()
         item = self.getItem(self.cookie, "json", self.dmsID.get())
         buf = StringIO()
         jsonObject = json.loads(item)
@@ -107,10 +110,30 @@ class PlmGui(Frame):
             plmdata = self.getItemString(self.attrDict, 0, buf, False)
         
         self.text.insert(1.0, plmdata)
-        #for k, v in self.attrDict.items():
-        #    print(k, "  ", v)
+        self.timeout = False
+   
         
-       
+    """ Trying to spawn a separate thread so it can be terminated if taking too long.
+        However, it appears the call to displayItem continues to block the main thread."""
+    def runDisplayItemThread(self):
+        try:
+            threadFlag = True
+            cnt = 0
+            self.clearText()
+            t = threading.Thread(target = self.displayItem())
+            t.start()
+            t.join(3)
+            #t._stop()
+            if self.timeout:
+                self.clearText()
+                self.text.insert(1.0, "Timeout Occurred")
+        except:
+            exceptionType, error = sys.exc_info()[:2]
+            retstr = "getItem failed: " + str(error)
+            self.text.insert(1.0, repr(exceptionType) + " " + str(error))
+
+        
+
     def initUserInterface(self):
         self.master.title("PLM-360 Item Master Viewer  ")
         self.frameone = Frame(self.master)
@@ -118,15 +141,15 @@ class PlmGui(Frame):
         self.plmlbl = Label(self.frameone, text = "  PLM-360 Item Master Viewer  ", background = "white", foreground = "blue", font = "Times 20", relief = "raised")
         self.plmlbl.grid(row = 0, column = 0, columnspan = 5)
         self.userlbl = Label(self.frameone, font = "Times 12", text = "User ID").grid(row = 1, column = 0, sticky = "w", padx = 0, pady = 20, ipadx = 0, ipady = 0)
-        self.userentry = Entry(self.frameone, width = 30, textvariable = self.sessionUser).grid(row = 1, column = 0, sticky = "w",  padx = 80, pady = 0, ipadx = 0, ipady = 0)
+        self.userentry = Entry(self.frameone, width = 30, textvariable = self.user).grid(row = 1, column = 0, sticky = "w",  padx = 80, pady = 0, ipadx = 0, ipady = 0)
         self.passlbl = Label(self.frameone, font = "Times 12", text = "Password").grid(row = 1, column = 1, sticky = "w", padx = 0, pady = 0, ipadx = 0, ipady = 0)
-        self.passentry = Entry(self.frameone, show = "*", textvariable = self.sessionPwd).grid(row = 1, column = 1, sticky = "w",  padx = 85, pady = 0, ipadx = 0, ipady = 0)
+        self.passentry = Entry(self.frameone, show = "*", textvariable = self.pwd).grid(row = 1, column = 1, sticky = "w",  padx = 85, pady = 0, ipadx = 0, ipady = 0)
         self.blanklbl = Label(self.frameone, text = "").grid(row = 3)
         #self.dmsIdlbl = Label(self.frameone, font = "Times 12", text = "DMS ID").grid(row = 2, column = 0, sticky = "w", padx = 0, pady = 0, ipadx = 0, ipady = 0)
         #self.dmsIdentry = Entry(self.frameone, textvariable = self.dmsID).grid(row = 2, column = 0, sticky = "w",  padx = 80, pady = 0, ipadx = 0, ipady = 0)
         self.skuOptionMenu = OptionMenu(self.frameone, self.sku, *self.options).grid(row = 2, column = 0, sticky = "w")
         self.flagcb = Checkbutton(self.frameone, font = "Times 12", text = "Display JSON Object", variable = self.flag).grid(row = 2, column = 0, padx = 120)
-        self.queryPLMbutton = Button(self.frameone, background = "blue", foreground = "white", font = "Times 12", relief = "raised", text = "Get Data", command = self.displayItem).grid(row = 2, column = 1, sticky = "w")
+        self.queryPLMbutton = Button(self.frameone, background = "blue", foreground = "white", font = "Times 12", relief = "raised", text = "Get Data", command = self.runDisplayItemThread).grid(row = 2, column = 1, sticky = "w")
         
         self.frametwo = Frame(self.master)
         self.frametwo.grid(row = 1, column = 0)
