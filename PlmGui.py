@@ -99,7 +99,7 @@ class PlmGui(Frame):
         
     
     def displayItem(self):
-        self.clearText()
+        self.timeout = True
         item = self.getItem(self.cookie, "json", self.dmsID.get())
         buf = StringIO()
         jsonObject = json.loads(item)
@@ -109,22 +109,20 @@ class PlmGui(Frame):
             self.getItemAttributes(jsonObject, 0, False)
             plmdata = self.getItemString(self.attrDict, 0, buf, False)
         
-        self.text.insert(1.0, plmdata)
         self.timeout = False
-   
+        self.clearText()
+        self.text.insert(1.0, plmdata)
         
-    """ Trying to spawn a separate thread so it can be terminated if taking too long.
-        However, it appears the call to displayItem continues to block the main thread."""
+    # Have this method invoked from the queryPLMbutton to have the displayItem method run in a separate thread  
     def runDisplayItemThread(self):
         try:
-            threadFlag = True
             cnt = 0
             self.clearText()
-            t = threading.Thread(target = self.displayItem())
+            t = threading.Thread(target = self.displayItem)#, daemon = True)
             t.start()
-            t.join(3)
-            #t._stop()
-            if self.timeout:
+            t.join(5)
+            print("Thread is alive?: " + repr(t.isAlive()))
+            if (t.isAlive() == True):
                 self.clearText()
                 self.text.insert(1.0, "Timeout Occurred")
         except:
@@ -141,9 +139,9 @@ class PlmGui(Frame):
         self.plmlbl = Label(self.frameone, text = "  PLM-360 Item Master Viewer  ", background = "white", foreground = "blue", font = "Times 20", relief = "raised")
         self.plmlbl.grid(row = 0, column = 0, columnspan = 5)
         self.userlbl = Label(self.frameone, font = "Times 12", text = "User ID").grid(row = 1, column = 0, sticky = "w", padx = 0, pady = 20, ipadx = 0, ipady = 0)
-        self.userentry = Entry(self.frameone, width = 30, textvariable = self.user).grid(row = 1, column = 0, sticky = "w",  padx = 80, pady = 0, ipadx = 0, ipady = 0)
+        self.userentry = Entry(self.frameone, width = 30, textvariable = self.sessionUser).grid(row = 1, column = 0, sticky = "w",  padx = 80, pady = 0, ipadx = 0, ipady = 0)
         self.passlbl = Label(self.frameone, font = "Times 12", text = "Password").grid(row = 1, column = 1, sticky = "w", padx = 0, pady = 0, ipadx = 0, ipady = 0)
-        self.passentry = Entry(self.frameone, show = "*", textvariable = self.pwd).grid(row = 1, column = 1, sticky = "w",  padx = 85, pady = 0, ipadx = 0, ipady = 0)
+        self.passentry = Entry(self.frameone, show = "*", textvariable = self.sessionPwd).grid(row = 1, column = 1, sticky = "w",  padx = 85, pady = 0, ipadx = 0, ipady = 0)
         self.blanklbl = Label(self.frameone, text = "").grid(row = 3)
         #self.dmsIdlbl = Label(self.frameone, font = "Times 12", text = "DMS ID").grid(row = 2, column = 0, sticky = "w", padx = 0, pady = 0, ipadx = 0, ipady = 0)
         #self.dmsIdentry = Entry(self.frameone, textvariable = self.dmsID).grid(row = 2, column = 0, sticky = "w",  padx = 80, pady = 0, ipadx = 0, ipady = 0)
