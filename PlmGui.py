@@ -15,10 +15,11 @@ import time
 
 
 class PlmGui(Frame):
+    itemRetrieval = False # Class variable used by threads to communicate status
+        
     def __init__(self, master):
         Frame.__init__(self, master)
         self.master = master
-        self.itemRetrieval = False
         self.text = None
         self.sessionUser = StringVar()
         self.sessionPwd = StringVar()
@@ -97,13 +98,17 @@ class PlmGui(Frame):
         buf = StringIO()
         self.text.insert(1.0, self.getItemString(self.itemDict, 0, buf, False))
         
-    # This doesn't work as intended...probalby need to set up a queue to update athe itemRertrieval variable across different threads.
+    # This doesn't work as intended...probably need to set up a queue to update athe itemRertrieval variable across different threads.
     def waitForDisplayItem(self):
+        PlmGui.itemRetrieval = False
         cnt = 0
-        while self.itemRetrieval == False:
+        while PlmGui.itemRetrieval == False:
             time.sleep(1)
             #print("Thread %i is alive?: %s" % (cnt, repr(t.isAlive())))
-            print("Status of item retrieval is %s" % repr(self.itemRetrieval))
+            lock = threading.Lock()
+            with lock:
+                print("Status of item retrieval is %s" % repr(PlmGui.itemRetrieval))
+                lock.release
             cnt += 1
             #self.clearText()
             self.text.insert(1.0, repr(cnt))
@@ -111,7 +116,6 @@ class PlmGui(Frame):
     
     def displayItem(self):
         print("Thread started at %s" % repr(time.localtime()))
-        self.itemRetrieval  = False
         item = self.getItem(self.cookie, "json", self.dmsID.get())
         buf = StringIO()
         jsonObject = json.loads(item)
@@ -121,10 +125,12 @@ class PlmGui(Frame):
             self.getItemAttributes(jsonObject, 0, False)
             plmdata = self.getItemString(self.attrDict, 0, buf, False)
         
-        self.itemRetrieval  = True
-        print("Thread finished at %s" % repr(time.localtime()))
+        lock = threading.Lock()
+        with lock:
+            PlmGui.itemRetrieval = True
+            print("Thread finished at %s" % repr(time.localtime()))
+            lock.release
         
-        self.timeout = False
         self.clearText()
         self.text.insert(1.0, plmdata)
         
@@ -134,9 +140,9 @@ class PlmGui(Frame):
             self.clearText()
             t = threading.Thread(target = self.displayItem)#, daemon = True)
             t.start()
-        #    t2 = threading.Thread(target = self.waitForDisplayItem())
-        #    t2.start()
-        #   t.join(5.0)
+            t2 = threading.Thread(target = self.waitForDisplayItem)
+            t2.start() 
+            #t.join(5.0)
         except:
             exceptionType, error = sys.exc_info()[:2]
             retstr = "getItem failed: " + str(error)
