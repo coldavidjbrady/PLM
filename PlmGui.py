@@ -18,7 +18,7 @@ class PlmGui(Frame):
     def __init__(self, master):
         Frame.__init__(self, master)
         self.master = master
-        self.timeout = True
+        self.itemRetrieval = False
         self.text = None
         self.sessionUser = StringVar()
         self.sessionPwd = StringVar()
@@ -97,9 +97,21 @@ class PlmGui(Frame):
         buf = StringIO()
         self.text.insert(1.0, self.getItemString(self.itemDict, 0, buf, False))
         
+    # This doesn't work as intended...probalby need to set up a queue to update athe itemRertrieval variable across different threads.
+    def waitForDisplayItem(self):
+        cnt = 0
+        while self.itemRetrieval == False:
+            time.sleep(1)
+            #print("Thread %i is alive?: %s" % (cnt, repr(t.isAlive())))
+            print("Status of item retrieval is %s" % repr(self.itemRetrieval))
+            cnt += 1
+            #self.clearText()
+            self.text.insert(1.0, repr(cnt))
+
     
     def displayItem(self):
-        self.timeout = True
+        print("Thread started at %s" % repr(time.localtime()))
+        self.itemRetrieval  = False
         item = self.getItem(self.cookie, "json", self.dmsID.get())
         buf = StringIO()
         jsonObject = json.loads(item)
@@ -109,6 +121,9 @@ class PlmGui(Frame):
             self.getItemAttributes(jsonObject, 0, False)
             plmdata = self.getItemString(self.attrDict, 0, buf, False)
         
+        self.itemRetrieval  = True
+        print("Thread finished at %s" % repr(time.localtime()))
+        
         self.timeout = False
         self.clearText()
         self.text.insert(1.0, plmdata)
@@ -116,15 +131,12 @@ class PlmGui(Frame):
     # Have this method invoked from the queryPLMbutton to have the displayItem method run in a separate thread  
     def runDisplayItemThread(self):
         try:
-            cnt = 0
             self.clearText()
             t = threading.Thread(target = self.displayItem)#, daemon = True)
             t.start()
-            t.join(5)
-            print("Thread is alive?: " + repr(t.isAlive()))
-            if (t.isAlive() == True):
-                self.clearText()
-                self.text.insert(1.0, "Timeout Occurred")
+        #    t2 = threading.Thread(target = self.waitForDisplayItem())
+        #    t2.start()
+        #   t.join(5.0)
         except:
             exceptionType, error = sys.exc_info()[:2]
             retstr = "getItem failed: " + str(error)
