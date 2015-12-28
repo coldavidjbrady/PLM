@@ -1,4 +1,3 @@
-# From PyCharm
 from tkinter import *
 import datetime
 import sys
@@ -99,10 +98,10 @@ class PlmGui(Frame):
         buf = StringIO()
         self.text.insert(1.0, self.getItemString(self.itemDict, 0, buf, False))
         
-    # This doesn't work as intended...probably need to set up a queue to update athe itemRertrieval variable across different threads.
     def waitForDisplayItem(self):
         PlmGui.itemRetrieval = False
         cnt = 0
+        strcnt = ""
         while PlmGui.itemRetrieval == False:
             time.sleep(1)
             #print("Thread %i is alive?: %s" % (cnt, repr(t.isAlive())))
@@ -110,9 +109,10 @@ class PlmGui(Frame):
             with lock:
                 print("Status of item retrieval is %s" % repr(PlmGui.itemRetrieval))
                 lock.release
+            strcnt = strcnt + str(cnt) + " "
             cnt += 1
-            #self.clearText()
-            self.text.insert(1.0, repr(cnt))
+            self.clearText()
+            self.text.insert(1.0, strcnt)
 
     
     def displayItem(self):
@@ -132,6 +132,7 @@ class PlmGui(Frame):
             print("Thread finished at %s" % repr(time.localtime()))
             lock.release
         
+        time.sleep(1)
         self.clearText()
         self.text.insert(1.0, plmdata)
         
