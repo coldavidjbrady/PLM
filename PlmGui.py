@@ -12,8 +12,6 @@ from xml.etree.ElementTree import Element, tostring
 import threading
 import time
 
-
-
 class PlmGui(Frame):
     itemRetrieval = False # Class variable used by threads to communicate status
         
