@@ -136,46 +136,7 @@ class PlmGui(Frame):
             with lock:
                 PlmGui.itemRetrieval = True
             
-    '''
     
-    def waitForDisplayItem(self):
-        PlmGui.itemRetrieval = False
-        cnt = 0
-        strcnt = ""
-        while PlmGui.itemRetrieval == False:
-            time.sleep(1)
-            #print("Thread %i is alive?: %s" % (cnt, repr(t.isAlive())))
-            lock = threading.Lock()
-            with lock:
-                print("Status of item retrieval is %s" % repr(PlmGui.itemRetrieval))
-                lock.release
-            strcnt = strcnt + str(cnt) + " "
-            cnt += 1
-            self.clearText()
-            self.text.insert(1.0, strcnt)
-
-    
-    def displayItem(self):
-        print("Thread started at %s" % repr(time.localtime()))
-        item = self.getItem(self.cookie, "json", self.dmsID.get())
-        buf = StringIO()
-        jsonObject = json.loads(item)
-        if self.flag.get():
-            plmdata = self.getItemString(jsonObject, 0, buf, False)
-        else:
-            self.getItemAttributes(jsonObject, 0, False)
-            plmdata = self.getItemString(self.attrDict, 0, buf, False)
-        
-        lock = threading.Lock()
-        with lock:
-            PlmGui.itemRetrieval = True
-            print("Thread finished at %s" % repr(time.localtime()))
-            lock.release
-        
-        time.sleep(1)
-        self.clearText()
-        self.text.insert(1.0, plmdata)
-      '''  
     # Have this method invoked from the queryPLMbutton to have the displayItem method run in a separate thread  
     def runDisplayItemThread(self):
         try:
@@ -259,7 +220,11 @@ class PlmGui(Frame):
             # Extract only the exception type and value from the tuple returned by sys.exc_info()
             exceptionType, error = sys.exc_info()[:2]
             retstr = "getItem failed: " + str(error)
-            print(repr(exceptionType) + " " + str(error))
+            errStr = repr(exceptionType) + " " + str(error)
+            self.cookie = True 
+            self.clearText()
+            self.text.insert(1.0, errStr)
+
             
     def getAllItems(self, cookie, contentType):
         try:
