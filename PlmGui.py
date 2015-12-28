@@ -69,6 +69,10 @@ class PlmGui(Frame):
         
     def clearText(self):
         self.text.delete(1.0, END)
+        
+    def setText(self, posn, txt):
+        self.text.insert(posn, txt)
+
        
     def displayItemXml(self):
         self.clearText()
@@ -96,6 +100,43 @@ class PlmGui(Frame):
         buf = StringIO()
         self.text.insert(1.0, self.getItemString(self.itemDict, 0, buf, False))
         
+    def waitForDisplayItem(self):
+        PlmGui.itemRetrieval = False
+        cnt = 0
+        while PlmGui.itemRetrieval == False:
+            time.sleep(1)
+            # Obtain a lock to prevent any concurrency issues.
+            lock = threading.Lock()
+            # Using "with" ensures that a lock is released upon completion of the code block
+            with lock:
+                cnt += 1
+                self.setText(END, " %i " % cnt)
+                
+    
+    def displayItem(self):
+        try:
+            print("Thread started at %s" % repr(time.localtime()))
+            item = self.getItem(self.cookie, "json", self.dmsID.get())
+            buf = StringIO()
+            jsonObject = json.loads(item)
+            if self.flag.get():
+                plmdata = self.getItemString(jsonObject, 0, buf, False)
+            else:
+                self.getItemAttributes(jsonObject, 0, False)
+                plmdata = self.getItemString(self.attrDict, 0, buf, False)
+            
+            print("Thread finished at %s" % repr(time.localtime()))
+                
+            self.clearText()
+            self.text.insert(1.0, plmdata)
+        # Ensure itemRetrieval is set to True; otherwise the other thread will block until another item is selected.
+        finally: 
+            lock = threading.Lock()
+            with lock:
+                PlmGui.itemRetrieval = True
+            
+    '''
+    
     def waitForDisplayItem(self):
         PlmGui.itemRetrieval = False
         cnt = 0
@@ -133,7 +174,7 @@ class PlmGui(Frame):
         time.sleep(1)
         self.clearText()
         self.text.insert(1.0, plmdata)
-        
+      '''  
     # Have this method invoked from the queryPLMbutton to have the displayItem method run in a separate thread  
     def runDisplayItemThread(self):
         try:
