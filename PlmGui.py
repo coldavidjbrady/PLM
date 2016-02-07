@@ -77,7 +77,7 @@ class PlmGui(Frame):
        
     def displayItemXml(self):
         self.clearText()
-        item = self.getItem(self.cookie, "json", self.dmsID.get())
+        item = self.getItem(self.cookie, "json")
         buf = StringIO()
         jsonObject = json.loads(item)
         self.getItemAttributes(jsonObject, 0, False)
@@ -111,13 +111,19 @@ class PlmGui(Frame):
             # Using "with" ensures that a lock is released upon completion of the code block
             with lock:
                 cnt += 1
-                self.setText(END, " %i " % cnt)
+                if cnt % 10 == 0: # Use modulus to include a newline every 10 seconds. 
+                    self.setText(END, "%i\n " % cnt)
+                else:
+                    self.setText(END, " %i " % cnt)
                 
-    
+    def getCurrentTime(self):
+        t = time.localtime()
+        return str(t.tm_mday) + "/" + str(t.tm_mon)  + "/" + str(t.tm_year) + ": " + str(t.tm_hour).zfill(2) + ":" + str(t.tm_min).zfill(2) + ":" + str(t.tm_sec).zfill(2)
+            
     def displayItem(self):
         try:
-            print("Thread started at %s" % repr(time.localtime()))
-            item = self.getItem(self.cookie, "json", self.dmsID.get())
+            print("Thread started at %s" % self.getCurrentTime())
+            item = self.getItem(self.cookie, "json")
             buf = StringIO()
             jsonObject = json.loads(item)
             if self.flag.get():
@@ -126,7 +132,7 @@ class PlmGui(Frame):
                 self.getItemAttributes(jsonObject, 0, False)
                 plmdata = self.getItemString(self.attrDict, 0, buf, False)
             
-            print("Thread finished at %s" % repr(time.localtime()))
+            print("Thread finished at %s" % self.getCurrentTime())
                 
             self.clearText()
             self.text.insert(1.0, plmdata)
@@ -148,7 +154,7 @@ class PlmGui(Frame):
             #t.join(5.0)
         except:
             exceptionType, error = sys.exc_info()[:2]
-            retstr = "getItem failed: " + str(error)
+            retstr = "runDisplyItemThread method failed: " + str(error)
             self.text.insert(1.0, repr(exceptionType) + " " + str(error))
 
         
@@ -204,7 +210,7 @@ class PlmGui(Frame):
         cookie = str("customer=%s; JSESSIONID=%s" % (token, sessionId))
         return cookie
      
-    def getItem(self, cookie, contentType, dmsID):
+    def getItem(self, cookie, contentType):
         try:
             self.dmsID.set(self.itemDict[self.sku.get()])
             print("DmsID is " + self.dmsID.get())
