@@ -1,4 +1,4 @@
-# From PyCharm
+# Last updated on 19 Mar 16
 from tkinter import *
 import datetime
 import sys
