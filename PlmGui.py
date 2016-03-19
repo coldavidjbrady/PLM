@@ -111,7 +111,7 @@ class PlmGui(Frame):
             # Using "with" ensures that a lock is released upon completion of the code block
             with lock:
                 cnt += 1
-                if cnt % 10 == 0: # Use modulus to include a newline every 10 seconds. 
+                if cnt % 15 == 0: # Use modulus to include a newline every 15 seconds. 
                     self.setText(END, "%i\n " % cnt)
                 else:
                     self.setText(END, " %i " % cnt)
@@ -196,19 +196,24 @@ class PlmGui(Frame):
         self.quitbutton.grid(row = 2, column = 1, sticky = "w", padx = 20, pady = 20)
  
     def getAuthCredentials(self):
-        if (self.user == "" or self.pwd == ""):
-            self.user = "david.brady@g3enterprises.com"
-            self.pwd = "Kimber1y"
-        
-        authUrl="https://g3enterprises.autodeskplm360.net/rest/auth/1/login"
-        headers = {"Content-Type" : "application/json", "Accept": "application/json", "userID" : self.user, "password" : self.pwd}
-        data = urlencode(headers).encode("utf-8")
-        req = Request(authUrl, data)
-        response = urlopen(req)
-        authDict = json.loads(response.read().decode("utf-8")) 
-        token, sessionId = authDict['customerToken'], authDict['sessionid']
-        cookie = str("customer=%s; JSESSIONID=%s" % (token, sessionId))
-        return cookie
+        try:
+            if (self.user == "" or self.pwd == ""):
+                self.user = "david.brady@g3enterprises.com"
+                self.pwd = "Kimber1y"
+            
+            authUrl="https://g3enterprises.autodeskplm360.net/rest/auth/1/login"
+            headers = {"Content-Type" : "application/json", "Accept": "application/json", "userID" : self.user, "password" : self.pwd}
+            data = urlencode(headers).encode("utf-8")
+            req = Request(authUrl, data)
+            response = urlopen(req)
+            authDict = json.loads(response.read().decode("utf-8")) 
+            token, sessionId = authDict['customerToken'], authDict['sessionid']
+            cookie = str("customer=%s; JSESSIONID=%s" % (token, sessionId))
+            return cookie
+        except:
+            exceptionType, error = sys.exc_info()[:2]
+            errmsg = repr(exceptionType) + " " + str(error)
+            print(errmsg)
      
     def getItem(self, cookie, contentType):
         try:
@@ -223,6 +228,7 @@ class PlmGui(Frame):
             r = opener.open(request)
             return r.read().decode("utf-8")
         except Exception:
+            self.cookie = True # May have failed because cookie expired...try getting a new cookie.
             # Extract only the exception type and value from the tuple returned by sys.exc_info()
             exceptionType, error = sys.exc_info()[:2]
             retstr = "getItem failed: " + str(error)
